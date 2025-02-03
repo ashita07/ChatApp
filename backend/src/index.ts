@@ -15,34 +15,50 @@ wss.on("connection", (socket) => {
   console.log("User connected: " + CountUser);
 
   socket.on("message", (event) => {
-    console.log(event);
+    try {
+      const parsedMessage = JSON.parse(event as any as string);
 
-    const parsedMessage = JSON.parse(event as any as string);
+      if (parsedMessage.type === "join") {
+        allSockets.push({
+          socket,
+          room: parsedMessage.payload.room,
+        });
+      }
 
-    if (parsedMessage.type === "join") {
-      allSockets.push({
-        socket,
-        room: parsedMessage.payload.room,
-      });
+      console.log(allSockets.length);
+
+      if (parsedMessage.type === "chat") {
+        const currentUser = allSockets.find((s) => s.socket === socket); // ✅ Fixed
+
+        const userRoom = currentUser ? currentUser.room : null;
+        console.log(`User found in room: ${userRoom}`);
+
+        if (!userRoom) return; // Exit if userRoom is null
+
+        const roomSame = allSockets.filter((e) => e.room === userRoom); // ✅ Fixed
+
+        console.log(`users in room ${userRoom}:`, roomSame.length);
+
+        roomSame.forEach((element) => {
+          if (element.socket.readyState === WebSocket.OPEN) {
+            console.log(`sending message to user in room : ${userRoom}`);
+            element.socket.send(parsedMessage.payload.message);
+          } else {
+            console.log("skipping closed socket");
+          }
+        });
+      }
+    } catch (error) {
+      console.log(error);
     }
+  });
 
-    console.log(allSockets.length);
+  socket.on("close", () => {
+    console.log("user disconnected");
+    allSockets = allSockets.filter((user) => user.socket != socket);
+  });
 
-    if (parsedMessage.type === "chat") {
-      const currentUser = allSockets.find((s) => s.socket === socket); // ✅ Fixed
-
-      const userRoom = currentUser ? currentUser.room : null;
-      console.log(`User found in room: ${userRoom}`);
-
-      if (!userRoom) return; // Exit if userRoom is null
-
-      const roomSame = allSockets.filter((e) => e.room === userRoom); // ✅ Fixed
-
-      console.log(`users in room ${userRoom}:`, roomSame.length);
-
-      roomSame.forEach((element) => {
-        element.socket.send(parsedMessage.payload.message);
-      });
-    }
+  socket.on("error", (error) => {
+    console.log(error);
   });
 });
