@@ -2,7 +2,27 @@ import { useState } from "react";
 import "./App.css";
 
 const ChatRoom: React.FC = () => {
-  const [joined, setJoined] = useState<boolean>(true);
+  const [joined, setJoined] = useState<boolean>(false);
+  const [room, setRoom] = useState<string>("");
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+
+  const joinRoom = () => {
+    if (!room.trim()) return;
+    const ws = new WebSocket("ws://localhost:8080");
+
+    ws.onopen = () => {
+      console.log("connected to server");
+      ws.send(JSON.stringify({ type: "join", payload: { room } }));
+      setJoined(true);
+    };
+
+    ws.onclose = () => {
+      console.log("Disconnected from server");
+      setJoined(false);
+    };
+
+    setSocket(ws);
+  };
 
   return (
     <>
@@ -12,26 +32,37 @@ const ChatRoom: React.FC = () => {
             <h2 className=" mb-4 font-bold flex items-center justify-center text-2xl">
               Join a Chat Room
             </h2>
-            <input className="w-[90vh] border-2 rounded p-2 mt-4" type="text" />{" "}
+            <input
+              placeholder="Enter Room Name"
+              value={room}
+              className="w-[90vh] border-2 rounded p-2 mt-4"
+              type="text"
+              onChange={(e) => setRoom(e.target.value)}
+            />{" "}
           </div>
-          <button className="bg-gray-700 rounded p-2 w-[90vh] m-4 hover:bg-gray-500 rounded text-white">
+          <button
+            className="bg-gray-700 rounded p-2 w-[90vh] m-4 hover:bg-gray-500 rounded text-white"
+            onClick={() => joinRoom}
+          >
             Join Room
           </button>
         </div>
       ) : (
-        <div className="w-full max-w-lg p-4 bg-gray-800 rounded-lg shadow-lg">
-          <h2 className="text-xl font-semibold">Room:{}</h2>
-          <div className="h-64 overflow-y-auto bg-gray-700 rounded-lg my-4">
-            message
-          </div>
-          <div className="flex gap-2">
-            <input
-              className="p-2 flex-1 bg-gray-700 text-white focus:outline-none border-3 rounded w-full"
-              type="text"
-            />
-            <button className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-white">
-              Send
-            </button>
+        <div className="flex justify-center items-center bg-gray-500 h-screen">
+          <div className="w-full max-w-xl p-4 bg-gray-800 rounded-lg shadow-lg h-130">
+            <h2 className="text-xl font-semibold">Room:{}</h2>
+            <div className="h-95 overflow-y-auto bg-gray-700 rounded-lg my-4">
+              message
+            </div>
+            <div className="flex gap-2">
+              <input
+                className="p-2 flex-1 bg-gray-700 text-white focus:outline-none border-3 rounded w-full"
+                type="text"
+              />
+              <button className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-white">
+                Send
+              </button>
+            </div>
           </div>
         </div>
       )}
