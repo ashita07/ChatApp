@@ -1,14 +1,25 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
 const ChatRoom: React.FC = () => {
   const [joined, setJoined] = useState<boolean>(false);
   const [room, setRoom] = useState<string>("");
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [message, setMessage] = useState<string>("");
+  const [messages, setMessages] = useState<string[]>([]);
+  const messageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messageRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const joinRoom = () => {
     if (!room.trim()) return;
     const ws = new WebSocket("ws://localhost:8080");
+
+    ws.onmessage = (event) => {
+      setMessages((prev) => [...prev, event.data]);
+    };
 
     ws.onopen = () => {
       console.log("connected to server");
@@ -20,46 +31,69 @@ const ChatRoom: React.FC = () => {
       console.log("Disconnected from server");
       setJoined(false);
     };
-
     setSocket(ws);
+  };
+
+  const sendMessages = () => {
+    if (socket && message.trim()) {
+      socket.send(
+        JSON.stringify({
+          type: "chat",
+          payload: { message },
+        })
+      );
+      setMessage("");
+    }
   };
 
   return (
     <>
       {!joined ? (
         <div className="h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
-          <div className="">
-            <h2 className=" mb-4 font-bold flex items-center justify-center text-2xl">
-              Join a Chat Room
-            </h2>
-            <input
-              placeholder="Enter Room Name"
-              value={room}
-              className="w-[90vh] border-2 rounded p-2 mt-4"
-              type="text"
-              onChange={(e) => setRoom(e.target.value)}
-            />{" "}
-          </div>
+          <h2 className=" mb-4 font-bold flex items-center justify-center text-2xl">
+            Join a Chat Room
+          </h2>
+          <input
+            placeholder="Enter Room Name"
+            value={room}
+            className="w-[90vh] border-2 rounded p-2 mt-4"
+            type="text"
+            onChange={(e) => setRoom(e.target.value)}
+          />{" "}
           <button
             className="bg-gray-700 rounded p-2 w-[90vh] m-4 hover:bg-gray-500 rounded text-white"
-            onClick={() => joinRoom}
+            onClick={joinRoom}
           >
             Join Room
           </button>
         </div>
       ) : (
-        <div className="flex justify-center items-center bg-gray-500 h-screen">
+        <div className="flex justify-center items-center bg-gray-900 h-screen">
           <div className="w-full max-w-xl p-4 bg-gray-800 rounded-lg shadow-lg h-130">
-            <h2 className="text-xl font-semibold">Room:{}</h2>
+            <h2 className="text-xl font-semibold">Room : {room}</h2>
             <div className="h-95 overflow-y-auto bg-gray-700 rounded-lg my-4">
-              message
+              {messages.map((msg, index) => (
+                <div
+                  key={index}
+                  className="py-2 px-3 bg-gray-600 m-2 rounded-2xl text-white max-w-max "
+                >
+                  {msg}
+                </div>
+              ))}
+              <div ref={messageRef}></div>
             </div>
             <div className="flex gap-2">
               <input
                 className="p-2 flex-1 bg-gray-700 text-white focus:outline-none border-3 rounded w-full"
                 type="text"
+                placeholder="Type a message...."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
               />
-              <button className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-white">
+              <button
+                className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-white"
+                onClick={sendMessages}
+              >
                 Send
               </button>
             </div>
