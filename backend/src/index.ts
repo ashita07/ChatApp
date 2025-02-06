@@ -5,6 +5,7 @@ const wss = new WebSocketServer({ port: 8080 });
 interface User {
   socket: WebSocket;
   room: string;
+  name: string;
 }
 
 let CountUser = 0;
@@ -22,6 +23,7 @@ wss.on("connection", (socket) => {
         allSockets.push({
           socket,
           room: parsedMessage.payload.room,
+          name: parsedMessage.payload.name,
         });
       }
 
@@ -42,7 +44,12 @@ wss.on("connection", (socket) => {
         roomSame.forEach((element) => {
           if (element.socket.readyState === WebSocket.OPEN) {
             console.log(`sending message to user in room : ${userRoom}`);
-            element.socket.send(parsedMessage.payload.message);
+
+            const messageToSend = JSON.stringify({
+              name: currentUser?.name,
+              message: parsedMessage.payload.message,
+            });
+            element.socket.send(messageToSend);
           } else {
             console.log("skipping closed socket");
           }
